@@ -128,7 +128,7 @@ class NamingInProgress {
 	modified: string;
 	affectedRange: vscode.Range;
 	cursor: vscode.Position;
-	afterContentChange: boolean;
+	afterInsertion: boolean;
 
 	constructor(startPosition: vscode.Position) {
 		this.mode = NamingInProgress.defaultMode;
@@ -136,7 +136,7 @@ class NamingInProgress {
 		this.modified = '';
 		this.affectedRange = new vscode.Range(startPosition, startPosition);
 		this.cursor = startPosition;
-		this.afterContentChange = false;
+		this.afterInsertion = false;
 	}
 
 	onContentChange(range: vscode.Range, text: string) {
@@ -155,56 +155,72 @@ class NamingInProgress {
 						break;
 				}
 			} else {
-				const insertPosition = range.start.character - this.affectedRange.start.character;
-				let trimPosition = insertPosition;
-				// todo: more reasonable behavior on longer input (e.g. pasted)
-				if (text.length === 1) {
-					if (/[-_ ]/.test(text)) {
-						switch (this.mode) {
-							case NamingConvension.underscore:
-								text = '_';
-								break;
-							case NamingConvension.camelCase:
-								if (insertPosition === 0) {
-									text = '';  // no effect
-								} else if (this.modified[insertPosition - 1] === '?') {
-									text = '';  // no duplicated upper case indicator
-								} else {
-									text = '?';  // insert upper case indicator
-								}
-								break;
-						}
-					} else if (/[a-zA-Z0-9]/.test(text)) {
-						if (insertPosition === 0) {
-							// first char's case is unchanged
+				const insertOffset = range.start.character - this.affectedRange.start.character;
+				this.processInsertion(insertOffset, text);
+				if (this.isFinished) {
+					return;
+				}
+			}
+		} else if (text.length === 0 && this.affectedRange.contains(range)) {
+			const deletionOffset = range.start.character - this.affectedRange.start.character;
+			const deletionLength = range.end.character - range.start.character;
+			this.modified = this.modified.slice(0, deletionOffset) + this.modified.slice(deletionOffset + deletionLength);
+
+		} else {
+			// todo: more precise control
+			this.exitNaming();
+			return;
+		}
+		this.affectedRange = new vscode.Range(
+			this.affectedRange.start, this.affectedRange.end.translate(0, textLength));
+	}
+
+	processInsertion(offset: number, text: string) {
+		let trimPosition = offset;
+		// todo: more reasonable behavior on longer input (e.g. pasted)
+		if (text.length === 1) {
+			if (/[-_ ]/.test(text)) {
+				switch (this.mode) {
+					case NamingConvension.underscore:
+						text = '_';
+						break;
+					case NamingConvension.camelCase:
+						if (offset === 0) {
+							text = '';  // no effect
+						} else if (this.modified[offset - 1] === '?') {
+							text = '';  // no duplicated upper case indicator
 						} else {
-							if (this.mode === NamingConvension.camelCase) {
-								if (this.modified[insertPosition - 1] === '?') {
-									trimPosition -= 1;
-									text = text.toUpperCase();
-								} else {
-									text = text.toLowerCase();
-								}
-							} else {
-								text = /[A-Z]/.test(this.modified[0]) ? text.toUpperCase() : text.toLowerCase();
-							}
+							text = '?';  // insert upper case indicator
+						}
+						break;
+				}
+			} else if (/[a-zA-Z0-9]/.test(text)) {
+				if (offset === 0) {
+					// first char's case is unchanged
+				} else {
+					if (this.mode === NamingConvension.camelCase) {
+						if (this.modified[offset - 1] === '?') {
+							trimPosition -= 1;
+							text = text.toUpperCase();
+						} else {
+							text = text.toLowerCase();
 						}
 					} else {
-						this.exitNaming();
-						return;
+						text = /[A-Z]/.test(this.modified[0]) ? text.toUpperCase() : text.toLowerCase();
 					}
 				}
-				this.modified = [
-					this.modified.slice(0, trimPosition),
-					text,
-					this.modified.slice(insertPosition),
-				].join('');
-				this.cursor = this.cursor.translate(0, text.length - (insertPosition - trimPosition));
+			} else {
+				this.exitNaming();
+				return;
 			}
-			this.affectedRange = new vscode.Range(
-				this.affectedRange.start, this.affectedRange.end.translate(0, textLength));
-			this.afterContentChange = true;
 		}
+		this.modified = [
+			this.modified.slice(0, trimPosition),
+			text,
+			this.modified.slice(offset),
+		].join('');
+		this.cursor = this.cursor.translate(0, text.length - (offset - trimPosition));
+		this.afterInsertion = true;
 	}
 
 	onSelectionChange(cursor: vscode.Position) {
@@ -212,10 +228,10 @@ class NamingInProgress {
 		// console.log(`affected: ${this.affectedRange.start.line}, ${this.affectedRange.start.character} -> ${this.affectedRange.end.line}, ${this.affectedRange.end.character}`)
 		if (cursor.isBefore(this.affectedRange.start) || cursor.isAfter(this.affectedRange.end)) {
 			this.exitNaming();
-		} else if (!this.afterContentChange) {
+		} else if (!this.afterInsertion) {
 			this.cursor = cursor;
 		} else {
-			this.afterContentChange = false;
+			this.afterInsertion = false;
 		}
 	}
 
