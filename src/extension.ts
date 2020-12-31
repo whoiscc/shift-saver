@@ -11,7 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('[Shift Saver] activated');
 
 	const camelCaseModeDecoration = vscode.window.createTextEditorDecorationType({
-		'border': '1px solid',
+		'border': '1.25px solid',
 		'borderColor': '#62ddc7',
 		'borderRadius': '5px',
 		'after': {
@@ -21,7 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	const underscoreModeDecoration = vscode.window.createTextEditorDecorationType({
-		'border': '1px solid',
+		'border': '1.25px solid',
 		'borderColor': '#eefb84',
 		'borderRadius': '5px',
 		'after': {
@@ -57,8 +57,8 @@ export function activate(context: vscode.ExtensionContext) {
 			const change = event.contentChanges[0];
 			// console.log(`[changed] first change: isEmpty=${change.range.isEmpty} text=${change.text}`);
 			naming.onContentChange(change.range, change.text);
-			ignoreSelectionChange = true;
-			updateView();
+			// ignoreSelectionChange = true;
+			// updateView();
 		});
 
 		const unsubscribeSelectionChange = vscode.window.onDidChangeTextEditorSelection(() => {
@@ -69,11 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
 				ignoreSelectionChange = false;
 				return;
 			}
-			// console.log(`changed: ${editor.document.lineAt(naming.affectedRange.start).text !== lineBackup}`);
-			// if (editor.document.lineAt(naming.affectedRange.start).text !== lineBackup) {
-			// 	return;
-			// }
-			// console.log(`line: <${editor.document.lineAt(naming.affectedRange.start).text}>`);
 			naming.onSelectionChange(editor.document.validatePosition(editor.selection.start));
 			updateView();
 		});
@@ -109,6 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
 			editor.setDecorations(decorationType, [naming.affectedRange]);
 			if (!editor.selection.start.isEqual(naming.cursor)) {
 				editor.selection = new vscode.Selection(naming.cursor, naming.cursor);
+				ignoreSelectionChange = true;
 			}
 			// lineBackup = editor.document.lineAt(naming.affectedRange.start).text;
 		}
@@ -129,20 +125,25 @@ class NamingInProgress {
 	mode: NamingConvension;
 	static defaultMode: NamingConvension = NamingConvension.camelCase;
 	isFinished: boolean;
-	raw: string;
 	modified: string;
 	affectedRange: vscode.Range;
 	cursor: vscode.Position;
+	afterContentChange: boolean;
 
 	constructor(startPosition: vscode.Position) {
 		this.mode = NamingInProgress.defaultMode;
 		this.isFinished = false;
-		this.raw = this.modified = '';
+		this.modified = '';
 		this.affectedRange = new vscode.Range(startPosition, startPosition);
 		this.cursor = startPosition;
+		this.afterContentChange = false;
 	}
 
 	onContentChange(range: vscode.Range, text: string) {
+		if (range.isEmpty && text.length === 0) {
+			return;
+		}
+		const textLength = text.length;
 		if (range.isEmpty) {
 			if (text === ' ' && this.affectedRange.isEmpty) {
 				switch (this.mode) {
@@ -155,15 +156,54 @@ class NamingInProgress {
 				}
 			} else {
 				const insertPosition = range.start.character - this.affectedRange.start.character;
+				let trimPosition = insertPosition;
+				// todo: more reasonable behavior on longer input (e.g. pasted)
+				if (text.length === 1) {
+					if (/[-_ ]/.test(text)) {
+						switch (this.mode) {
+							case NamingConvension.underscore:
+								text = '_';
+								break;
+							case NamingConvension.camelCase:
+								if (insertPosition === 0) {
+									text = '';  // no effect
+								} else if (this.modified[insertPosition - 1] === '?') {
+									text = '';  // no duplicated upper case indicator
+								} else {
+									text = '?';  // insert upper case indicator
+								}
+								break;
+						}
+					} else if (/[a-zA-Z0-9]/.test(text)) {
+						if (insertPosition === 0) {
+							// first char's case is unchanged
+						} else {
+							if (this.mode === NamingConvension.camelCase) {
+								if (this.modified[insertPosition - 1] === '?') {
+									trimPosition -= 1;
+									text = text.toUpperCase();
+								} else {
+									text = text.toLowerCase();
+								}
+							} else {
+								text = /[A-Z]/.test(this.modified[0]) ? text.toUpperCase() : text.toLowerCase();
+							}
+						}
+					} else {
+						this.exitNaming();
+						return;
+					}
+				}
 				this.modified = [
-					this.modified.slice(0, insertPosition),
-					text.toUpperCase(),
+					this.modified.slice(0, trimPosition),
+					text,
 					this.modified.slice(insertPosition),
 				].join('');
-				this.cursor = this.cursor.translate(0, text.length);
+				this.cursor = this.cursor.translate(0, text.length - (insertPosition - trimPosition));
 			}
 			this.affectedRange = new vscode.Range(
-				this.affectedRange.start, this.affectedRange.end.translate(0, text.length));
+				this.affectedRange.start, this.affectedRange.end.translate(0, textLength));
+			this.afterContentChange = true;
 		}
 	}
 
@@ -171,9 +211,31 @@ class NamingInProgress {
 		// console.log(`cursor: ${cursor.line}, ${cursor.character}`);
 		// console.log(`affected: ${this.affectedRange.start.line}, ${this.affectedRange.start.character} -> ${this.affectedRange.end.line}, ${this.affectedRange.end.character}`)
 		if (cursor.isBefore(this.affectedRange.start) || cursor.isAfter(this.affectedRange.end)) {
-			this.isFinished = true;
-		} else {
+			this.exitNaming();
+		} else if (!this.afterContentChange) {
 			this.cursor = cursor;
+		} else {
+			this.afterContentChange = false;
+		}
+	}
+
+	exitNaming() {
+		this.isFinished = true;
+		NamingInProgress.defaultMode = this.mode;
+
+		switch (this.mode) {
+			case NamingConvension.underscore: {
+				let i;
+				const len = this.modified.length;
+				for (i = len - 1; this.modified[i] === '_'; i -= 1) { }
+				this.modified = this.modified.slice(0, i + 1) + ' '.repeat(len - i - 1);
+				break;
+			}
+			case NamingConvension.camelCase:
+				if (this.modified[this.modified.length - 1] === '?') {
+					this.modified = this.modified.slice(0, this.modified.length - 1) + ' ';
+				}
+				break;
 		}
 	}
 
