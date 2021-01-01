@@ -1,13 +1,30 @@
 {
+	"publisher": "correctizer",
 	"name": "shift-saver",
 	"displayName": "Shift Saver",
 	"description": "Save your shift key and little finger when creating long names",
+	"repository": {
+		"url": "https://github.com/whoiscc/shift-saver"
+	},
 	"version": "0.0.1",
 	"engines": {
 		"vscode": "^1.52.0"
 	},
 	"categories": [
 		"Other"
+	],
+	"icon": "logo.png",
+	"badges": [
+		{
+			"url": "https://vsmarketplacebadge.apphb.com/version/correctizer.shift-saver.svg",
+			"href": "https://marketplace.visualstudio.com/items?itemName=correctizer.shift-saver",
+			"description": "Version on Visual Studio Marketplace"
+		},
+		{
+			"url": "https://vsmarketplacebadge.apphb.com/downloads/correctizer.shift-saver.svg",
+			"href": "https://marketplace.visualstudio.com/items?itemName=correctizer.shift-saver",
+			"description": "Download"
+		}
 	],
 	"activationEvents": [
 		"onCommand:shift-saver.createName"
