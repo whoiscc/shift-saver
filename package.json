@@ -13,7 +13,7 @@
 	"categories": [
 		"Other"
 	],
-	"icon": "logo.png",
+	"icon": "res/logo.png",
 	"badges": [
 		{
 			"url": "https://vsmarketplacebadge.apphb.com/version/correctizer.shift-saver.svg",

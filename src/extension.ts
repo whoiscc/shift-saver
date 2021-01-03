@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as path from "path";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -10,25 +11,20 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('[Shift Saver] activated');
 
-	const camelCaseModeDecoration = vscode.window.createTextEditorDecorationType({
-		'border': '1.25px solid',
-		'borderColor': '#62ddc7',
-		'borderRadius': '5px',
-		'after': {
-			'contentIconPath': context.asAbsolutePath('camel-case.svg'),
-			'margin': '-5px 2px 0 0',
-		}
-	});
+	function createDecorationType(color: string, svg: string) {
+		return vscode.window.createTextEditorDecorationType({
+			'border': '1.25px solid',
+			'borderColor': color,
+			'borderRadius': '5px',
+			'after': {
+				'contentIconPath': context.asAbsolutePath(path.join('res', svg)),
+				'margin': '-5px 2px 0 0',
+			}
+		});
+	}
 
-	const underscoreModeDecoration = vscode.window.createTextEditorDecorationType({
-		'border': '1.25px solid',
-		'borderColor': '#eefb84',
-		'borderRadius': '5px',
-		'after': {
-			'contentIconPath': context.asAbsolutePath('underscore.svg'),
-			'margin': '-5px 2px 0 0',
-		}
-	});
+	const camelCaseModeDecoration = createDecorationType('#62ddc7', 'camel-case.svg');
+	const underscoreModeDecoration = createDecorationType('#eefb84', 'underscore.svg');
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
@@ -213,6 +209,10 @@ class NamingInProgress {
 				this.exitNaming();
 				return;
 			}
+		} else {
+			// fixme: not proper for naming with suggestion
+			this.exitNaming();
+			return;
 		}
 		this.modified = [
 			this.modified.slice(0, trimPosition),
