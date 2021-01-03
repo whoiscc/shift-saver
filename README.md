@@ -31,7 +31,7 @@ By default, press <kbd>CapsLock</kbd> twice to enter shift-saving naming mode, a
 - Shift-saving naming mode
 - Toggle between camelCase and underscore names
 
-[Unreleased]: https://github.com/whoiscc/shift-saver/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/whoiscc/shift-saver/compare/v1.0.1...HEAD
 [1.0.1]: https://github.com/whoiscc/shift-saver/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/whoiscc/shift-saver/compare/v0.0.2...v1.0.0
 [0.0.2]: https://github.com/whoiscc/shift-saver/releases/tag/v0.0.2
