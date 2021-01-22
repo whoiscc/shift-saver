@@ -1,7 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as path from "path";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -11,25 +10,52 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('[Shift Saver] activated');
 
-	function createDecorationType(color: string, svg: string) {
+	function createDecorationType(color: vscode.ThemeColor | string, textColor: vscode.ThemeColor, content: string) {
 		return vscode.window.createTextEditorDecorationType({
-			'border': '1.25px solid',
+			'border': '1.25px',
+			'borderStyle': 'solid',
 			'borderColor': color,
-			'borderRadius': '5px',
+			'borderRadius': '3px 0 3px 3px',
+			'textDecoration': '; padding: 1px',
 			'after': {
-				'contentIconPath': context.asAbsolutePath(path.join('res', svg)),
-				'margin': '-5px 2px 0 0',
+				'contentText': content,
+				'backgroundColor': color,
+				'color': textColor,
+				'height': '13px',
+				'textDecoration': '; font-size: 10px; line-height: 12px; padding: 0 2px 0 4px; vertical-align: text-top;',
 			}
 		});
 	}
 
-	const camelCaseModeDecoration = createDecorationType('#62ddc7', 'camel-case.svg');
-	const underscoreModeDecoration = createDecorationType('#eefb84', 'underscore.svg');
+	let camelCaseModeDecoration: vscode.TextEditorDecorationType, underscoreModeDecoration: vscode.TextEditorDecorationType;
+
+	function rebuildDecorations() {
+		const config = vscode.workspace.getConfiguration('shift-saver');
+		console.log(config);
+		camelCaseModeDecoration = createDecorationType(
+			config.get('camelCaseColor') || new vscode.ThemeColor('list.activeSelectionBackground'),
+			new vscode.ThemeColor('list.activeSelectionForeground'),
+			'camelCase'
+		);
+		underscoreModeDecoration = createDecorationType(
+			config.get('underscoreColor') || new vscode.ThemeColor('statusBarItem.remoteBackground'),
+			new vscode.ThemeColor('statusBarItem.remoteForeground'),
+			'underscore'
+		);
+	}
+	rebuildDecorations();
+	let disposable = vscode.workspace.onDidChangeConfiguration(function (event) {
+		if (!event.affectsConfiguration('shift-saver')) {
+			return;
+		}
+		rebuildDecorations();
+	});
+	context.subscriptions.push(disposable);
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerTextEditorCommand('shift-saver.createName', (editor) => {
+	disposable = vscode.commands.registerTextEditorCommand('shift-saver.createName', (editor) => {
 		// The code you place here will be executed every time your command is executed
 
 		// Display a message box to the user
