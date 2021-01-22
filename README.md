@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2021-01-22
+### Added
+- Configurable flag colors
+
+### Changed
+- Flags now get background/foreground colors based on current theme
+- Flags are written with pure CSS instead of SVG
+
 ## [1.0.1] - 2021-01-03
 ### Fixed
 - Input left bracket will cause exiting naming mode
@@ -34,7 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shift-saving naming mode
 - Toggle between camelCase and underscore names
 
-[Unreleased]: https://github.com/whoiscc/shift-saver/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/whoiscc/shift-saver/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/whoiscc/shift-saver/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/whoiscc/shift-saver/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/whoiscc/shift-saver/compare/v0.0.2...v1.0.0
 [0.0.2]: https://github.com/whoiscc/shift-saver/releases/tag/v0.0.2
