@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flags now get background/foreground colors based on current theme
 - Flags are written with pure CSS instead of SVG
 
+### Fixed
+- Minor prettify border style for naming mode
+
 ## [1.0.1] - 2021-01-03
 ### Fixed
 - Input left bracket will cause exiting naming mode
